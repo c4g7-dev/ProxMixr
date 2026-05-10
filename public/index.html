@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProxMixr - Mix your Proxmox into Termix</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>ProxMixr</h1>
+      <p class="subtitle">Mix your Proxmox VMs/LXCs into Termix - Automagically</p>
+      <div id="statusBadge" class="status-badge"></div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="config">Configuration</button>
+      <button class="tab-btn" data-tab="preview">Preview</button>
+      <button class="tab-btn" data-tab="cleanup">Cleanup</button>
+      <button class="tab-btn" data-tab="history">History</button>
+    </nav>
+
+    <!-- Dashboard Tab -->
+    <div id="dashboard" class="tab-content active">
+      <div class="card">
+        <h2>Quick Actions</h2>
+        <div class="action-buttons">
+          <button id="testProxmoxBtn" class="btn btn-secondary">Test Proxmox Connection</button>
+          <button id="testTermixBtn" class="btn btn-secondary">Test Termix Connection</button>
+          <button id="syncNowBtn" class="btn btn-primary">Sync Now</button>
+        </div>
+        <div id="actionResult" class="result-box"></div>
+      </div>
+
+      <div class="card">
+        <h2>System Status</h2>
+        <div id="systemStatus" class="status-grid">
+          <div class="status-item">
+            <span class="label">Proxmox:</span>
+            <span id="proxmoxStatus" class="value">Not Configured</span>
+          </div>
+          <div class="status-item">
+            <span class="label">Termix:</span>
+            <span id="termixStatus" class="value">Not Configured</span>
+          </div>
+          <div class="status-item">
+            <span class="label">Uptime:</span>
+            <span id="uptime" class="value">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuration Tab -->
+    <div id="config" class="tab-content">
+      <div class="card">
+        <h2>Proxmox Configuration</h2>
+        <form id="proxmoxForm" class="config-form">
+          <div class="form-group">
+            <label for="proxmoxUrl">Proxmox URL</label>
+            <input type="text" id="proxmoxUrl" placeholder="https://proxmox.example.com:8006" required>
+          </div>
+
+          <div class="form-section">
+            <h3>Authentication Method</h3>
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="proxmoxAuth" value="password" checked>
+                Username & Password
+              </label>
+              <label>
+                <input type="radio" name="proxmoxAuth" value="token">
+                API Token
+              </label>
+            </div>
+          </div>
+
+          <div id="proxmoxPasswordAuth">
+            <div class="form-group">
+              <label for="proxmoxUsername">Username</label>
+              <input type="text" id="proxmoxUsername" placeholder="root@pam">
+            </div>
+            <div class="form-group">
+              <label for="proxmoxPassword">Password</label>
+              <input type="password" id="proxmoxPassword" placeholder="Password">
+            </div>
+          </div>
+
+          <div id="proxmoxTokenAuth" style="display: none;">
+            <div class="form-group">
+              <label for="proxmoxTokenId">Token ID</label>
+              <input type="text" id="proxmoxTokenId" placeholder="user@realm!tokenid">
+            </div>
+            <div class="form-group">
+              <label for="proxmoxTokenSecret">Token Secret</label>
+              <input type="password" id="proxmoxTokenSecret" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Termix Configuration</h2>
+        <form id="termixForm" class="config-form">
+          <div class="form-group">
+            <label for="termixUrl">Termix URL</label>
+            <input type="text" id="termixUrl" placeholder="https://termix.example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="termixApiKey">API Key (JWT Bearer Token)</label>
+            <input type="password" id="termixApiKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>SSH & Sync Configuration</h2>
+        <form id="syncForm" class="config-form">
+          <div class="form-group">
+            <label for="sshUsername">Default SSH Username</label>
+            <input type="text" id="sshUsername" placeholder="root" value="root">
+          </div>
+          <div class="form-group">
+            <label for="sshPassword">Default SSH Password</label>
+            <input type="password" id="sshPassword" placeholder="Leave empty if using SSH keys">
+            <small>Leave empty if using credential ID</small>
+          </div>
+          <div class="form-group">
+            <label for="termixFolder">Termix Folder Name</label>
+            <input type="text" id="termixFolder" placeholder="Proxmox" value="Proxmox">
+          </div>
+          <div class="form-group">
+            <label for="sshTimeout">SSH Connection Timeout (ms)</label>
+            <input type="number" id="sshTimeout" placeholder="3000" value="3000" min="1000" max="10000">
+          </div>
+          <div class="form-group checkbox-group">
+            <label>
+              <input type="checkbox" id="checkSSH" checked>
+              Only sync VMs with SSH port 22 available
+            </label>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <button id="saveConfigBtn" class="btn btn-primary btn-large">Save Configuration</button>
+        <div id="configResult" class="result-box"></div>
+      </div>
+    </div>
+
+    <!-- Preview Tab -->
+    <div id="preview" class="tab-content">
+      <div class="card">
+        <h2>Sync Preview</h2>
+        <p>Preview which VMs/LXCs will be synced to Termix</p>
+        <button id="loadPreviewBtn" class="btn btn-primary">Load Preview</button>
+        <div id="previewResult" class="result-box"></div>
+      </div>
+
+      <div id="previewData" class="card" style="display: none;">
+        <h3>Preview Results</h3>
+        <div id="previewSummary" class="status-grid"></div>
+        <div id="previewTable"></div>
+      </div>
+    </div>
+
+    <!-- Cleanup Tab -->
+    <div id="cleanup" class="tab-content">
+      <div class="card">
+        <h2>Remove Synced Hosts</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">Remove all hosts from Termix that were added via this sync tool (tagged with 'proxmox')</p>
+        <div class="action-buttons">
+          <button id="listProxmoxHostsBtn" class="btn btn-secondary">List Proxmox Hosts in Termix</button>
+          <button id="removeAllProxmoxBtn" class="btn btn-danger">Remove All Proxmox Hosts</button>
+        </div>
+        <div id="cleanupResult" class="result-box"></div>
+      </div>
+
+      <div id="cleanupData" class="card" style="display: none;">
+        <h3>Proxmox Hosts in Termix</h3>
+        <div id="cleanupSummary" class="status-grid"></div>
+        <div id="cleanupTable"></div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div id="history" class="tab-content">
+      <div class="card">
+        <h2>Sync History</h2>
+        <button id="loadHistoryBtn" class="btn btn-primary">Refresh History</button>
+        <div id="historyResult" class="result-box"></div>
+      </div>
+
+      <div id="historyData" class="card"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
