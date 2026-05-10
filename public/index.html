@@ -197,6 +197,37 @@
     </div>
   </div>
 
+  <!-- Live Console Overlay -->
+  <div id="consoleOverlay" class="console-overlay">
+    <div class="console-container">
+      <div class="console-header">
+        <div class="console-title">
+          <span>🔄</span>
+          <span id="consoleTitle">Sync in Progress</span>
+        </div>
+        <div class="console-status">
+          <div class="pulse"></div>
+          <span id="consoleStatus">Running...</span>
+        </div>
+        <button class="console-close" id="consoleClose">×</button>
+      </div>
+      <div class="console-body" id="consoleBody">
+        <!-- Logs will be added here -->
+      </div>
+      <div class="console-footer">
+        <div class="console-progress">
+          <div class="console-progress-bar">
+            <div class="console-progress-fill" id="consoleProgressFill" style="width: 0%"></div>
+          </div>
+          <div class="console-progress-text" id="consoleProgressText">0%</div>
+        </div>
+        <div class="console-actions">
+          <button class="btn btn-secondary btn-console" id="consoleDone" style="display: none;">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/app.js"></script>
 </body>
 </html>

@@ -19,6 +19,8 @@ Automatically synchronize your Proxmox VMs and LXC containers to Termix SSH clie
 - **Web UI**: Modern, minimalistic web interface for configuration
 - **Sync History**: Track all sync operations with detailed logs
 - **Preview Mode**: See what will be synced before running
+- **Live Console**: Real-time logging overlay with progress tracking during sync/preview
+- **Cleanup Feature**: Remove all synced Proxmox hosts from Termix with one click
 - **Flexible Auth**: Supports both Proxmox password and API token authentication
 - **Organized**: Automatically organizes hosts in folders and tags them
 
@@ -118,11 +120,11 @@ SSH_TIMEOUT_MS=3000
 
 ### Web Interface
 
-The web UI provides four main sections:
+The web UI provides five main sections:
 
 1. **Dashboard**: Quick actions and system status
    - Test connections to Proxmox and Termix
-   - Run sync immediately
+   - Run sync immediately with live console
    - View system health
 
 2. **Configuration**: Manage all settings
@@ -132,14 +134,28 @@ The web UI provides four main sections:
    - Sync options
 
 3. **Preview**: See what will be synced
-   - View all discovered VMs/LXCs
+   - View all discovered VMs/LXCs with live console
    - Check SSH availability status
    - See which hosts will be synced
 
-4. **History**: View past sync operations
+4. **Cleanup**: Manage synced hosts
+   - List all Proxmox hosts in Termix
+   - Remove all synced hosts with one click
+
+5. **History**: View past sync operations
    - Detailed logs of each sync
    - Success/failure status
    - Number of hosts synced
+
+### Live Console
+
+Both sync and preview operations display a real-time console overlay showing:
+- Discovery progress
+- IP detection results
+- SSH availability checks
+- Upload progress
+- Success/error messages
+- Animated progress bar
 
 ### How It Works
 
@@ -171,6 +187,8 @@ The application exposes a REST API:
 - `GET /api/sync/preview` - Preview sync without executing
 - `POST /api/sync` - Perform sync
 - `GET /api/sync/history` - Get sync history
+- `GET /api/cleanup/list` - List all Proxmox hosts in Termix
+- `DELETE /api/cleanup/remove-all` - Remove all Proxmox hosts from Termix
 
 ## Architecture
 

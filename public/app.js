@@ -4,6 +4,78 @@ const API_BASE = window.location.origin;
 // State
 let currentConfig = null;
 
+// Live Console Logger
+class ConsoleLogger {
+  constructor() {
+    this.overlay = document.getElementById('consoleOverlay');
+    this.body = document.getElementById('consoleBody');
+    this.title = document.getElementById('consoleTitle');
+    this.status = document.getElementById('consoleStatus');
+    this.progressFill = document.getElementById('consoleProgressFill');
+    this.progressText = document.getElementById('consoleProgressText');
+    this.doneBtn = document.getElementById('consoleDone');
+    this.closeBtn = document.getElementById('consoleClose');
+    this.logs = [];
+
+    this.closeBtn.onclick = () => this.hide();
+    this.doneBtn.onclick = () => this.hide();
+  }
+
+  show(title = 'Sync in Progress') {
+    this.title.textContent = title;
+    this.body.innerHTML = '';
+    this.logs = [];
+    this.setProgress(0);
+    this.overlay.classList.add('show');
+    this.doneBtn.style.display = 'none';
+  }
+
+  hide() {
+    this.overlay.classList.remove('show');
+  }
+
+  log(level, message) {
+    const time = new Date().toLocaleTimeString();
+    const logEl = document.createElement('div');
+    logEl.className = 'console-log';
+    logEl.innerHTML = `
+      <span class="console-log-time">${time}</span>
+      <span class="console-log-level ${level}">${level}</span>
+      <span class="console-log-message">${message}</span>
+    `;
+    this.body.appendChild(logEl);
+    this.body.scrollTop = this.body.scrollHeight;
+    this.logs.push({ time, level, message });
+  }
+
+  info(message) { this.log('info', message); }
+  success(message) { this.log('success', message); }
+  error(message) { this.log('error', message); }
+  warn(message) { this.log('warn', message); }
+
+  setProgress(percent) {
+    this.progressFill.style.width = `${percent}%`;
+    this.progressText.textContent = `${Math.round(percent)}%`;
+  }
+
+  setStatus(status) {
+    this.status.textContent = status;
+  }
+
+  complete(success = true) {
+    this.setProgress(100);
+    this.setStatus(success ? 'Completed' : 'Failed');
+    this.doneBtn.style.display = 'block';
+    if (success) {
+      this.success('<span class="success-text">✓ Sync completed successfully!</span>');
+    } else {
+      this.error('<span class="error-text">✗ Sync failed</span>');
+    }
+  }
+}
+
+const logger = new ConsoleLogger();
+
 // Utility Functions
 function showResult(elementId, message, type = 'info') {
   const element = document.getElementById(elementId);
@@ -208,7 +280,7 @@ document.getElementById('testTermixBtn').addEventListener('click', async () => {
   }
 });
 
-// Sync Now
+// Sync Now with Live Console
 document.getElementById('syncNowBtn').addEventListener('click', async () => {
   if (!confirm('Start sync now? This will add all Proxmox VMs/LXCs with SSH to Termix.')) {
     return;
@@ -216,26 +288,77 @@ document.getElementById('syncNowBtn').addEventListener('click', async () => {
 
   const btn = document.getElementById('syncNowBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="loading"></span> Syncing...';
+  btn.innerHTML = '<span class="loading loading-dots"></span>';
+
+  // Show live console
+  logger.show('Synchronizing Proxmox to Termix');
+  logger.info('🚀 Starting synchronization process...');
+  logger.setProgress(5);
 
   try {
+    logger.info('📡 Connecting to Proxmox API...');
+    logger.setProgress(10);
+
+    // Load config first to get SSH check setting
+    const configResponse = await fetch(`${API_BASE}/api/config`);
+    const config = await configResponse.json();
+
+    // Simulate getting preview first for realistic logging
+    const previewResponse = await fetch(`${API_BASE}/api/sync/preview`);
+    const preview = await previewResponse.json();
+
+    logger.success(`Found <span class="highlight">${preview.total}</span> VMs/LXCs in Proxmox`);
+    logger.info(`└─ <span class="highlight">${preview.vmsWithIP}</span> with IP addresses`);
+    logger.info(`└─ <span class="highlight">${preview.vmsWithoutIP}</span> without IP (will skip)`);
+    logger.setProgress(25);
+
+    if (preview.sshCheck) {
+      logger.info('🔍 Checking SSH availability on port 22...');
+      const sshAvailable = preview.sshCheck.filter(h => h.sshAvailable).length;
+      logger.success(`SSH responding on <span class="highlight">${sshAvailable}</span> hosts`);
+      logger.setProgress(45);
+    }
+
+    logger.info('📦 Preparing host data for Termix...');
+    logger.setProgress(60);
+
+    // Perform actual sync with config values
     const response = await fetch(`${API_BASE}/api/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
+      body: JSON.stringify({
+        checkSSH: config.sync.checkSSH
+      })
     });
 
     const result = await response.json();
+    logger.setProgress(80);
 
     if (result.status === 'completed') {
+      logger.info('📤 Uploading to Termix API...');
+      logger.setProgress(90);
+
+      await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for UX
+
+      logger.success(`Added <span class="highlight">${result.summary.synced}</span> hosts to Termix`);
+      if (result.summary.skipped > 0) {
+        logger.warn(`Skipped <span class="highlight">${result.summary.skipped}</span> hosts`);
+      }
+
+      logger.complete(true);
+
       showResult('actionResult',
         `✓ Sync completed! ${result.summary.synced} hosts synced, ${result.summary.skipped} skipped`,
         'success'
       );
     } else {
+      logger.error(`Sync failed: ${result.error}`);
+      logger.complete(false);
       showResult('actionResult', `✗ Sync failed: ${result.error}`, 'error');
     }
   } catch (error) {
+    logger.error(`Error: ${error.message}`);
+    logger.complete(false);
     showResult('actionResult', `✗ Error: ${error.message}`, 'error');
   } finally {
     btn.disabled = false;
@@ -243,15 +366,50 @@ document.getElementById('syncNowBtn').addEventListener('click', async () => {
   }
 });
 
-// Load Preview
+// Load Preview with Live Console
 document.getElementById('loadPreviewBtn').addEventListener('click', async () => {
   const btn = document.getElementById('loadPreviewBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="loading"></span> Loading...';
+  btn.innerHTML = '<span class="loading loading-dots"></span>';
+
+  // Show live console
+  logger.show('Loading Sync Preview');
+  logger.info('🚀 Starting preview scan...');
+  logger.setProgress(5);
 
   try {
+    logger.info('📡 Connecting to Proxmox API...');
+    logger.setProgress(15);
+
+    // Load config to get SSH check setting
+    const configResponse = await fetch(`${API_BASE}/api/config`);
+    const config = await configResponse.json();
+
+    logger.info('🔍 Scanning for VMs and LXCs...');
+    logger.setProgress(30);
+
     const response = await fetch(`${API_BASE}/api/sync/preview`);
     const preview = await response.json();
+
+    logger.success(`Found <span class="highlight">${preview.total}</span> VMs/LXCs`);
+    logger.info(`└─ <span class="highlight">${preview.vmsWithIP}</span> with IP addresses`);
+
+    if (preview.vmsWithoutIP > 0) {
+      logger.warn(`└─ <span class="highlight">${preview.vmsWithoutIP}</span> without IP (will skip)`);
+    }
+    logger.setProgress(60);
+
+    if (config.sync.checkSSH && preview.sshCheck) {
+      logger.info('🔑 Checking SSH port 22 availability...');
+      const sshAvailable = preview.sshCheck.filter(h => h.sshAvailable).length;
+      const sshUnavailable = preview.sshCheck.filter(h => !h.sshAvailable).length;
+
+      logger.success(`SSH responding on <span class="highlight">${sshAvailable}</span> hosts`);
+      if (sshUnavailable > 0) {
+        logger.warn(`SSH not available on <span class="highlight">${sshUnavailable}</span> hosts`);
+      }
+    }
+    logger.setProgress(90);
 
     // Show summary
     const summaryHTML = `
@@ -308,8 +466,12 @@ document.getElementById('loadPreviewBtn').addEventListener('click', async () => 
     document.getElementById('previewTable').innerHTML = tableHTML;
     document.getElementById('previewData').style.display = 'block';
 
+    logger.setProgress(100);
+    logger.complete(true);
     showResult('previewResult', 'Preview loaded successfully', 'success');
   } catch (error) {
+    logger.error(`Error: ${error.message}`);
+    logger.complete(false);
     showResult('previewResult', `Error: ${error.message}`, 'error');
   } finally {
     btn.disabled = false;
