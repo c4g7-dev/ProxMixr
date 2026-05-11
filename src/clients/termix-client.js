@@ -22,13 +22,14 @@ class TermixClient {
   }
 
   /**
-   * Import hosts using JSON import format
+   * Import hosts using Termix bulk import API
    * @param {Array} hosts - Array of host objects in Termix format
    */
   async importHosts(hosts) {
     try {
-      const response = await this.client.post('/api/hosts/import', {
-        hosts: hosts
+      const response = await this.client.post('/host/bulk-import', {
+        hosts: hosts,
+        overwrite: false
       });
 
       return response.data;
@@ -45,7 +46,7 @@ class TermixClient {
    */
   async getHosts() {
     try {
-      const response = await this.client.get('/api/hosts');
+      const response = await this.client.get('/host/db/host');
       return response.data;
     } catch (error) {
       if (error.response) {
@@ -61,7 +62,7 @@ class TermixClient {
    */
   async deleteHost(hostId) {
     try {
-      const response = await this.client.delete(`/api/hosts/${hostId}`);
+      const response = await this.client.delete(`/host/db/host/${hostId}`);
       return response.data;
     } catch (error) {
       if (error.response) {
@@ -78,7 +79,7 @@ class TermixClient {
    */
   async updateHost(hostId, hostData) {
     try {
-      const response = await this.client.put(`/api/hosts/${hostId}`, hostData);
+      const response = await this.client.put(`/host/db/host/${hostId}`, hostData);
       return response.data;
     } catch (error) {
       if (error.response) {
@@ -100,15 +101,19 @@ class TermixClient {
       folder = 'Proxmox',
       tags = [],
       authType = 'password',
-      keyId = null
+      keyId = null,
+      useNestedFolders = true
     } = options;
+
+    // Create nested folder structure: Proxmox/NodeName
+    const finalFolder = `${folder}/${vm.node}`;
 
     const host = {
       name: vm.name || `VM-${vm.vmid}`,
       ip: vm.ip,
       port: 22,
       username: username,
-      folder: folder,
+      folder: finalFolder,
       tags: [
         'proxmox',
         vm.type,
@@ -124,13 +129,15 @@ class TermixClient {
     if (authType === 'password' && password) {
       host.authType = 'password';
       host.password = password;
-    } else if (authType === 'key' && keyId) {
+    } else if (authType === 'credential' && keyId) {
       host.authType = 'credential';
-      host.credentialId = keyId;
+      host.credentialId = parseInt(keyId);
     } else {
-      // Default to password auth but empty (user will need to configure)
-      host.authType = 'password';
-      host.password = '';
+      // For 'none' or when no auth is provided, let Termix handle it
+      // Don't set authType - Termix will prompt for credentials when connecting
+      delete host.authType;
+      delete host.password;
+      delete host.credentialId;
     }
 
     return host;
@@ -149,7 +156,8 @@ class TermixClient {
       tags = [],
       authType = 'password',
       keyId = null,
-      replaceExisting = false
+      replaceExisting = false,
+      useNestedFolders = true
     } = options;
 
     // Filter VMs that have IP addresses
@@ -172,13 +180,19 @@ class TermixClient {
         folder,
         tags,
         authType,
-        keyId
+        keyId,
+        useNestedFolders
       })
     );
 
     try {
       // Import to Termix
+      console.log(`[Termix] Attempting to import ${hosts.length} hosts to Termix`);
+      console.log(`[Termix] Sample host:`, JSON.stringify(hosts[0], null, 2));
+
       const result = await this.importHosts(hosts);
+
+      console.log(`[Termix] Import result:`, JSON.stringify(result, null, 2));
 
       return {
         success: true,
@@ -188,6 +202,9 @@ class TermixClient {
         details: result
       };
     } catch (error) {
+      console.error(`[Termix] Import failed:`, error.message);
+      console.error(`[Termix] Error details:`, error);
+
       return {
         success: false,
         message: error.message,

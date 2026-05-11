@@ -109,9 +109,69 @@ document.querySelectorAll('.tab-btn').forEach(button => {
     // Load data for specific tabs
     if (tabName === 'config') {
       loadConfiguration();
+      loadSchedulerStatus();
+    } else if (tabName === 'history') {
+      // Auto-load history without showing result message
+      loadHistorySilently();
     }
   });
 });
+
+// Load history silently (no toast message)
+async function loadHistorySilently() {
+  try {
+    const response = await fetch(`${API_BASE}/api/sync/history`);
+    const history = await response.json();
+
+    if (history.length === 0) {
+      document.getElementById('historyData').innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No sync history found</p>';
+      return;
+    }
+
+    let historyHTML = '';
+
+    for (const entry of history) {
+      const statusBadge = entry.status === 'completed'
+        ? '<span class="badge success">Completed</span>'
+        : '<span class="badge error">Failed</span>';
+
+      const scheduledBadge = entry.log?.scheduled
+        ? '<span class="badge info">Scheduled</span>'
+        : '<span class="badge">Manual</span>';
+
+      historyHTML += `
+        <div class="card">
+          <h3>Sync #${entry.id} ${statusBadge} ${scheduledBadge}</h3>
+          <div class="status-grid">
+            <div class="status-item">
+              <span class="label">Started:</span>
+              <span class="value">${new Date(entry.started_at).toLocaleString()}</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Total VMs:</span>
+              <span class="value">${entry.total_vms || 0}</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Synced:</span>
+              <span class="value success">${entry.synced || 0}</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Skipped:</span>
+              <span class="value">${entry.skipped || 0}</span>
+            </div>
+          </div>
+          ${entry.error ? `<div class="result-box show error" style="margin-top: 1rem;">${entry.error}</div>` : ''}
+        </div>
+      `;
+    }
+
+    document.getElementById('historyData').innerHTML = historyHTML;
+  } catch (error) {
+    console.error('Failed to load history:', error);
+  }
+}
+
+
 
 // Proxmox Auth Method Toggle
 document.querySelectorAll('input[name="proxmoxAuth"]').forEach(radio => {
@@ -173,9 +233,16 @@ async function loadConfiguration() {
 
     // Populate Sync fields
     document.getElementById('sshUsername').value = currentConfig.sync.defaultUsername || 'root';
+    document.getElementById('sshPassword').value = currentConfig.sync.defaultPassword || '';
+    document.getElementById('sshAuthType').value = currentConfig.sync.authType || 'password';
+    document.getElementById('sshKeyId').value = currentConfig.sync.keyId || '';
     document.getElementById('termixFolder').value = currentConfig.sync.defaultFolder || 'Proxmox';
     document.getElementById('sshTimeout').value = currentConfig.sync.sshTimeout || 3000;
     document.getElementById('checkSSH').checked = currentConfig.sync.checkSSH !== false;
+    document.getElementById('useNestedFolders').checked = currentConfig.sync.useNestedFolders !== false;
+
+    // Update UI based on auth type
+    updateAuthTypeUI();
   } catch (error) {
     showResult('configResult', `Failed to load configuration: ${error.message}`, 'error');
   }
@@ -198,7 +265,10 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
       defaultPassword: document.getElementById('sshPassword').value,
       defaultFolder: document.getElementById('termixFolder').value,
       sshTimeout: parseInt(document.getElementById('sshTimeout').value),
-      checkSSH: document.getElementById('checkSSH').checked
+      checkSSH: document.getElementById('checkSSH').checked,
+      useNestedFolders: document.getElementById('useNestedFolders').checked,
+      authType: document.getElementById('sshAuthType').value,
+      keyId: document.getElementById('sshKeyId').value || null
     }
   };
 
@@ -479,63 +549,16 @@ document.getElementById('loadPreviewBtn').addEventListener('click', async () => 
   }
 });
 
-// Load History
+// Load History (button click - silent load, no toast)
 document.getElementById('loadHistoryBtn').addEventListener('click', async () => {
   const btn = document.getElementById('loadHistoryBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="loading"></span> Loading...';
 
-  try {
-    const response = await fetch(`${API_BASE}/api/sync/history`);
-    const history = await response.json();
+  await loadHistorySilently();
 
-    if (history.length === 0) {
-      document.getElementById('historyData').innerHTML = '<p>No sync history found</p>';
-      showResult('historyResult', 'No history entries found', 'info');
-      return;
-    }
-
-    let historyHTML = '';
-
-    for (const entry of history) {
-      const statusBadge = entry.status === 'completed'
-        ? '<span class="badge success">Completed</span>'
-        : '<span class="badge error">Failed</span>';
-
-      historyHTML += `
-        <div class="card">
-          <h3>Sync #${entry.id} ${statusBadge}</h3>
-          <div class="status-grid">
-            <div class="status-item">
-              <span class="label">Started:</span>
-              <span class="value">${new Date(entry.started_at).toLocaleString()}</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Total VMs:</span>
-              <span class="value">${entry.total_vms || 0}</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Synced:</span>
-              <span class="value success">${entry.synced || 0}</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Skipped:</span>
-              <span class="value">${entry.skipped || 0}</span>
-            </div>
-          </div>
-          ${entry.error ? `<div class="result-box show error" style="margin-top: 1rem;">${entry.error}</div>` : ''}
-        </div>
-      `;
-    }
-
-    document.getElementById('historyData').innerHTML = historyHTML;
-    showResult('historyResult', `Loaded ${history.length} history entries`, 'success');
-  } catch (error) {
-    showResult('historyResult', `Error: ${error.message}`, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Refresh History';
-  }
+  btn.disabled = false;
+  btn.textContent = 'Refresh History';
 });
 
 // List Proxmox Hosts in Termix
@@ -626,6 +649,115 @@ document.getElementById('removeAllProxmoxBtn').addEventListener('click', async (
   }
 });
 
+// ============== Scheduler Functions ==============
+
+async function loadSchedulerStatus() {
+  try {
+    const response = await fetch(`${API_BASE}/api/scheduler/status`);
+    const status = await response.json();
+
+    document.getElementById('schedulerActiveStatus').textContent = status.active ? 'Active' : 'Inactive';
+    document.getElementById('schedulerActiveStatus').className = status.active ? 'value success' : 'value error';
+
+    document.getElementById('schedulerLastSync').textContent = status.lastSync
+      ? new Date(status.lastSync).toLocaleString()
+      : 'Never';
+
+    document.getElementById('schedulerNextSync').textContent = status.nextSync
+      ? new Date(status.nextSync).toLocaleString()
+      : 'N/A';
+  } catch (error) {
+    console.error('Failed to load scheduler status:', error);
+  }
+}
+
+// Start Scheduler
+document.getElementById('startSchedulerBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('startSchedulerBtn');
+  const intervalMinutes = parseInt(document.getElementById('syncInterval').value);
+
+  if (!intervalMinutes || intervalMinutes < 1) {
+    showResult('schedulerResult', 'Please enter a valid interval (at least 1 minute)', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Starting...';
+
+  try {
+    const response = await fetch(`${API_BASE}/api/scheduler/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intervalMinutes })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showResult('schedulerResult', `✓ Scheduler started: sync every ${intervalMinutes} minutes`, 'success');
+      loadSchedulerStatus();
+    } else {
+      showResult('schedulerResult', `✗ ${result.error || result.message}`, 'error');
+    }
+  } catch (error) {
+    showResult('schedulerResult', `✗ Error: ${error.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Start Scheduler';
+  }
+});
+
+// Stop Scheduler
+document.getElementById('stopSchedulerBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('stopSchedulerBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Stopping...';
+
+  try {
+    const response = await fetch(`${API_BASE}/api/scheduler/stop`, {
+      method: 'POST'
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showResult('schedulerResult', '✓ Scheduler stopped', 'success');
+      loadSchedulerStatus();
+    } else {
+      showResult('schedulerResult', `✗ ${result.error || result.message}`, 'error');
+    }
+  } catch (error) {
+    showResult('schedulerResult', `✗ Error: ${error.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Stop Scheduler';
+  }
+});
+
+// Update UI based on SSH auth type selection
+function updateAuthTypeUI() {
+  const authType = document.getElementById('sshAuthType').value;
+  const credentialGroup = document.getElementById('credentialGroup');
+  const passwordGroup = document.getElementById('passwordGroup');
+
+  if (authType === 'credential') {
+    credentialGroup.style.display = 'block';
+    passwordGroup.style.display = 'none';
+  } else if (authType === 'password') {
+    credentialGroup.style.display = 'block'; // Show password for password auth
+    passwordGroup.style.display = 'block';
+  } else {
+    // 'none' auth type
+    credentialGroup.style.display = 'none';
+    passwordGroup.style.display = 'none';
+  }
+}
+
+// SSH Auth Type change handler
+document.getElementById('sshAuthType').addEventListener('change', updateAuthTypeUI);
+
 // Initialize
 loadSystemStatus();
+loadSchedulerStatus();
 setInterval(loadSystemStatus, 30000); // Refresh every 30 seconds
+setInterval(loadSchedulerStatus, 10000); // Refresh scheduler status every 10 seconds

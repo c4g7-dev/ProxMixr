@@ -7,20 +7,32 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>ProxMixr</h1>
-      <p class="subtitle">Mix your Proxmox VMs/LXCs into Termix - Automagically</p>
+  <!-- Modern Floating Navigation -->
+  <nav class="floating-nav">
+    <div class="nav-brand">
+      <span class="nav-title">ProxMixr</span>
       <div id="statusBadge" class="status-badge"></div>
-    </header>
+    </div>
+    <div class="nav-tabs">
+      <button class="tab-btn active" data-tab="dashboard">
+        <span class="tab-label">Dashboard</span>
+      </button>
+      <button class="tab-btn" data-tab="config">
+        <span class="tab-label">Config</span>
+      </button>
+      <button class="tab-btn" data-tab="preview">
+        <span class="tab-label">Preview</span>
+      </button>
+      <button class="tab-btn" data-tab="cleanup">
+        <span class="tab-label">Cleanup</span>
+      </button>
+      <button class="tab-btn" data-tab="history">
+        <span class="tab-label">History</span>
+      </button>
+    </div>
+  </nav>
 
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
-      <button class="tab-btn" data-tab="config">Configuration</button>
-      <button class="tab-btn" data-tab="preview">Preview</button>
-      <button class="tab-btn" data-tab="cleanup">Cleanup</button>
-      <button class="tab-btn" data-tab="history">History</button>
-    </nav>
+  <div class="container">
 
     <!-- Dashboard Tab -->
     <div id="dashboard" class="tab-content active">
@@ -119,10 +131,23 @@
         <h2>SSH & Sync Configuration</h2>
         <form id="syncForm" class="config-form">
           <div class="form-group">
+            <label for="sshAuthType">SSH Authentication Type</label>
+            <select id="sshAuthType">
+              <option value="password">Password</option>
+              <option value="credential">SSH Key (Credential ID)</option>
+              <option value="none">None (Configure in Termix)</option>
+            </select>
+          </div>
+          <div class="form-group" id="credentialGroup" style="display: none;">
+            <label for="sshKeyId">SSH Key Credential ID</label>
+            <input type="number" id="sshKeyId" placeholder="123" min="1">
+            <small>Get this from Termix → Settings → Credentials</small>
+          </div>
+          <div class="form-group">
             <label for="sshUsername">Default SSH Username</label>
             <input type="text" id="sshUsername" placeholder="root" value="root">
           </div>
-          <div class="form-group">
+          <div class="form-group" id="passwordGroup">
             <label for="sshPassword">Default SSH Password</label>
             <input type="password" id="sshPassword" placeholder="Leave empty if using SSH keys">
             <small>Leave empty if using credential ID</small>
@@ -141,12 +166,53 @@
               Only sync VMs with SSH port 22 available
             </label>
           </div>
+          <div class="form-group checkbox-group">
+            <label>
+              <input type="checkbox" id="useNestedFolders" checked>
+              Use nested folders (Proxmox/NodeName/VM)
+            </label>
+          </div>
         </form>
       </div>
 
       <div class="card">
         <button id="saveConfigBtn" class="btn btn-primary btn-large">Save Configuration</button>
         <div id="configResult" class="result-box"></div>
+      </div>
+
+      <!-- Scheduler Section -->
+      <div class="card">
+        <h2>Automatic Sync Scheduler</h2>
+        <p>Automatically sync on a schedule and detect new VMs/LXCs</p>
+
+        <div id="schedulerStatus" class="status-grid" style="margin-bottom: 1.5rem;">
+          <div class="status-item">
+            <span class="label">Status:</span>
+            <span class="value" id="schedulerActiveStatus">Inactive</span>
+          </div>
+          <div class="status-item">
+            <span class="label">Last Sync:</span>
+            <span class="value" id="schedulerLastSync">Never</span>
+          </div>
+          <div class="status-item">
+            <span class="label">Next Sync:</span>
+            <span class="value" id="schedulerNextSync">N/A</span>
+          </div>
+        </div>
+
+        <form class="config-form">
+          <div class="form-group">
+            <label for="syncInterval">Sync Interval (minutes)</label>
+            <input type="number" id="syncInterval" placeholder="30" value="30" min="1" max="1440">
+            <small>How often to check for new VMs and sync (1-1440 minutes)</small>
+          </div>
+        </form>
+
+        <div style="display: flex; gap: 0.75rem;">
+          <button id="startSchedulerBtn" class="btn btn-primary">Start Scheduler</button>
+          <button id="stopSchedulerBtn" class="btn btn-secondary">Stop Scheduler</button>
+        </div>
+        <div id="schedulerResult" class="result-box"></div>
       </div>
     </div>
 

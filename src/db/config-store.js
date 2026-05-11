@@ -132,7 +132,8 @@ class ConfigStore {
         checkSSH: this.get('sync_check_ssh', true),
         sshTimeout: this.get('sync_ssh_timeout', 3000),
         authType: this.get('ssh_auth_type', 'password'),
-        keyId: this.get('ssh_key_id', null)
+        keyId: this.get('ssh_key_id', null),
+        useNestedFolders: this.get('sync_use_nested_folders', true)
       }
     };
   }
@@ -163,6 +164,7 @@ class ConfigStore {
       if (config.sync.sshTimeout) this.set('sync_ssh_timeout', config.sync.sshTimeout);
       if (config.sync.authType) this.set('ssh_auth_type', config.sync.authType);
       if (config.sync.keyId !== undefined) this.set('ssh_key_id', config.sync.keyId);
+      if (config.sync.useNestedFolders !== undefined) this.set('sync_use_nested_folders', config.sync.useNestedFolders);
     }
   }
 

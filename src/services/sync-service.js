@@ -61,7 +61,8 @@ class SyncService {
       folder = 'Proxmox',
       tags = [],
       authType = 'password',
-      keyId = null
+      keyId = null,
+      useNestedFolders = true
     } = options;
 
     this.initializeClients();
@@ -135,7 +136,8 @@ class SyncService {
         folder,
         tags,
         authType,
-        keyId
+        keyId,
+        useNestedFolders
       });
 
       syncLog.steps[syncLog.steps.length - 1].status = 'completed';

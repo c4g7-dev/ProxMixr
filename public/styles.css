@@ -29,38 +29,50 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-header {
-  margin-bottom: 3rem;
+/* Modern Floating Navigation */
+.floating-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(9, 9, 11, 0.95);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
-  padding-bottom: 2rem;
+  padding: 0.75rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-h1 {
-  font-size: 2rem;
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.5rem;
+  border-right: 1px solid var(--border);
+  padding-right: 1.5rem;
+}
+
+.nav-title {
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
   letter-spacing: -0.02em;
 }
 
-.subtitle {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
+.nav-tabs {
+  display: flex;
+  gap: 0.25rem;
 }
 
 .status-badge {
   display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
   font-weight: 500;
-  margin-top: 1rem;
   border: 1px solid;
 }
 
@@ -76,6 +88,13 @@ h1 {
   color: var(--warning);
 }
 
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  padding-top: 5rem;
+}
+
 .tabs {
   display: flex;
   gap: 0.25rem;
@@ -88,24 +107,23 @@ h1 {
   background: none;
   border: none;
   color: var(--text-secondary);
-  padding: 0.75rem 1.25rem;
+  padding: 0.5rem 1rem;
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  border-radius: 6px;
   font-weight: 500;
   white-space: nowrap;
 }
 
 .tab-btn:hover {
   color: var(--text-primary);
-  background: var(--bg-secondary);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .tab-btn.active {
   color: var(--text-primary);
-  border-bottom-color: var(--accent);
+  background: var(--accent);
 }
 
 .tab-content {
@@ -152,48 +170,68 @@ h1 {
 }
 
 .btn {
-  padding: 0.625rem 1.25rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   text-align: center;
-  background: var(--bg-tertiary);
+  background: white;
   color: var(--text-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn:hover {
   border-color: var(--border-hover);
   background: var(--bg-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-primary {
   background: var(--accent);
   color: white;
   border-color: var(--accent);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 .btn-primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
 }
 
 .btn-secondary {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border-color: var(--border);
+  border-width: 2px;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
 }
 
 .btn-danger {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--error);
-  border-color: var(--error);
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
 }
 
 .btn-danger:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: #b91c1c;
+  border-color: #b91c1c;
+  box-shadow: 0 4px 8px rgba(220, 38, 38, 0.4);
 }
 
 .btn-large {
@@ -236,6 +274,46 @@ h1 {
 }
 
 .form-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-secondary);
+}
+
+.form-group select {
+  padding: 0.625rem 0.875rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  cursor: pointer;
+  width: 100%;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-secondary);
+}
+
+.form-group input[type="number"] {
+  padding: 0.625rem 0.875rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.form-group input[type="number"]:focus {
   outline: none;
   border-color: var(--accent);
   background: var(--bg-secondary);
